@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Facebook Analytics</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="../css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="../css/stylish-portfolio.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="../font-awesome-4.2.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="http://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700,300italic,400italic,700italic" rel="stylesheet">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- Matt Decuir, 11/10/14
+    Facebook Graph API Insights initial testing 
+    https://developers.facebook.com/docs/javascript/quickstart/v2.2 
+    
+    TODOs
+    1) Authentication
+    2) UTC time zones + date formatting
+    
+    NICE TO HAVEs
+    1) Let user pick from list of available metrics
+    -->
+
+  </head>
+  <body>
+    <h2>FB Page Insights</h2>
+    <!-- <div id="fb-root"></div> -->
+    <div class="fb-login-button" data-scope="manage_pages,read_insights" data-max-rows="1" data-size="medium" data-auto-logout-link="true" onlogin="checkLoginState();"></div>
+    <div id="status"></div>
+    <hr class="small">
+    <!-- <div id="results"> -->
+      <div id="pages"></div>
+      <hr class="small">
+      <!-- <a href="#" class="btn btn-dark btn-lg export">Export</a> -->
+      <!-- <hr class="small"> -->
+      <table id='stats' style="text-align: center;">
+      </table>
+    <!-- </div> -->
+
+    <!-- jQuery -->
+    <script src="../js/jquery.js"></script>
+
+    <!-- moment.js -->
+    <!-- <script src="../js/moment.js"></script> -->
+
+    <!-- Facebook SDK for Javascript -->
+    <script>
+      // This is called with the results from from FB.getLoginStatus().
+      function statusChangeCallback(response) {
+        console.log('statusChangeCallback');
+        console.log(response);
+        if (response.status === 'connected') {
+          // Logged into your app and Facebook.
+          $("#status").text('You are logged in');
+          getPageList();
+          //getInsightsData('696399537054686');
+          //$("#stats").show();
+        } else if (response.status === 'not_authorized') {
+          // The person is logged into Facebook, but not your app.
+          $("#status").text('Please log into this app.');
+          $()
+          $("#results").hide();
+        } else {
+          // The person is not logged into Facebook, so we're not sure if
+          // they are logged into this app or not.
+          $("#status").text('Please log into Facebook.');
+          $("#results").hide();
+        }
+      }
+
+      // This function is called when someone finishes with the Login
+      // Button.  See the onlogin handler attached to it in the sample
+      // code below.
+      function checkLoginState() {
+        // FB.login(function(){        
+          FB.getLoginStatus(function(response) {
+            statusChangeCallback(response);
+          });
+        // }, {scope: 'manage_pages,read_insights'});   
+      }
+
+      function getPageList() {
+        // Get list of pages
+        FB.api(
+            "/me/accounts",
+            function (response) {
+              if (response && !response.error) {
+                console.log(response);
+                console.log(response.data.length + " pages found");
+                console.log("page: " + response.data[0].name);
+                console.log("id: " + response.data[0].id);
+                
+                // List pages  
+                for (var i = 0; i < response.data.length; i++) {
+                  $("#pages").text(response.data[i].name + ': ' + response.data[i].id + '\n');
+                }
+
+                if(response.data.length === 1) {
+                  getInsightsData(response.data[0].id);
+                }
+                $("#results").show();
+              }
+            }
+        );
+      }
+
+      function getInsightsData(objectID) {
+        // Call the Graph API
+
+          FB.api(
+              "/"+objectID+"/insights/page_fan_adds,page_impressions_unique,page_engaged_users,page_impressions,page_impressions_organic,page_impressions_paid",
+              {
+                  "period": "day",
+                  "since": "2014-09-31"
+              },
+              function (response) {
+                if (response && !response.error) { 
+                  
+                  // Log response to console for debugging
+                  // console.log(response);    
+
+                  // Create temporary data list
+                  var numColumns = response.data.length;
+                  var numRows = response.data[0].values.length;
+                  var data = [];
+
+                  // Get headers
+                  headers = ['End Time']
+                  for (var i = 0; i < numColumns; i++) {
+                    headers.push(response.data[i].title);
+                  }
+                  data.push(headers);
+
+                  // Get data
+                  for (var j = 0; j < numRows; j++) {
+                    var row = [];
+                    row.push(response.data[0].values[j].end_time);
+                    for (var k = 0; k < numColumns; k++) {
+                      row.push(response.data[k].values[j].value);
+                    }
+                    data.push(row);
+                  }
+                  console.log('data:'+data)
+                  populateTable(data, numColumns, numRows)
+                }
+              }
+          );
+
+      }
+
+      function populateTable(data, cols, rows) {
+        // Add headers to table
+        var tblHeaderHTML;
+        for (var l = 0; l < cols; l++) {
+          tblHeaderHTML += '<th>'+ data[0][l] + '</th>';
+        }
+        $('#stats').append(tblHeaderHTML);
+
+        // Add data to table
+        for (var m = 1; m < rows; m++) {
+          var tblRowHTML = '<tr>';
+          for (var n = 0; n < cols; n++) {
+            tblRowHTML += '<td>'+ data[m][n]+'</td>';
+          }
+          tblRowHTML += '</tr>';
+          $('#stats').append(tblRowHTML);
+        }
+      }
+      // Initialize Facebook SDK
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId      : '392497277542197',
+          xfbml      : true,
+          version    : 'v2.2'
+        });
+        checkLoginState();
+      };
+      (function(d, s, id){
+         var js, fjs = d.getElementsByTagName(s)[0];
+         if (d.getElementById(id)) {return;}
+         js = d.createElement(s); js.id = id;
+         js.src = "http://connect.facebook.net/en_US/sdk.js";
+         // js.src = "http://connect.facebook.net/en_US/sdk/debug.js";
+         fjs.parentNode.insertBefore(js, fjs);
+       }(document, 'script', 'facebook-jssdk'));
+      console.log('fb script executed');
+    </script>
+
+    <!-- Export to CSV -->
+     <script>
+    //   $(document).ready(function () {
+
+    //       function exportTableToCSV($table, filename) {
+
+    //           var $rows = $table.find('tr:has(td)'),
+
+    //               // Temporary delimiter characters unlikely to be typed by keyboard
+    //               // This is to avoid accidentally splitting the actual contents
+    //               tmpColDelim = String.fromCharCode(11), // vertical tab character
+    //               tmpRowDelim = String.fromCharCode(0), // null character
+
+    //               // actual delimiter characters for CSV format
+    //               colDelim = '","',
+    //               rowDelim = '"\r\n"',
+
+    //               // Grab text from table into CSV formatted string
+    //               csv = '"' + $rows.map(function (i, row) {
+    //                   var $row = $(row),
+    //                       $cols = $row.find('td');
+
+    //                   return $cols.map(function (j, col) {
+    //                       var $col = $(col),
+    //                           text = $col.text();
+
+    //                       return text.replace('"', '""'); // escape double quotes
+
+    //                   }).get().join(tmpColDelim);
+
+    //               }).get().join(tmpRowDelim)
+    //                   .split(tmpRowDelim).join(rowDelim)
+    //                   .split(tmpColDelim).join(colDelim) + '"',
+
+    //               // Data URI
+    //               csvData = 'data:application/csv;charset=utf-8,' + encodeURIComponent(csv);
+
+    //           $(this)
+    //               .attr({
+    //               'download': filename,
+    //                   'href': csvData,
+    //                   'target': '_blank'
+    //           });
+    //       }
+
+    //       // This must be a hyperlink
+    //       $(".export").on('click', function (event) {
+    //           // CSV
+    //           exportTableToCSV.apply(this, [$('#stats>table'), 'export.csv']);
+
+    //           // IF CSV, don't do event.preventDefault() or return false
+    //           // We actually need this to be a typical hyperlink
+    //       });
+    //   });
+    // </script>
+
+  </body>
+</html>
