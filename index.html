@@ -161,7 +161,7 @@
                         <div class="col-md-6">
                             <div class="portfolio-item">
                                 <a href="http://earlylunch.club">
-                                    <img class="img-portfolio img-responsive" src="img/earlylunch.club.png">
+                                    <img class="img-portfolio img-responsive" id="earlylunch" src="img/earlylunch.club-green.png">
                                 </a>
                             </div>
                         </div>
@@ -328,6 +328,14 @@
 
     <!-- Custom Theme JavaScript -->
     <script>
+
+    // 
+    $("#earlylunch").hover(function() {
+        $(this).attr("src", "img/earlylunch.club-red.png");
+    }, function() {
+        $(this).attr("src", "img/earlylunch.club-green.png");
+    });
+
     // Closes the sidebar menu
     $("#menu-close").click(function(e) {
         e.preventDefault();
